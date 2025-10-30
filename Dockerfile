@@ -1,22 +1,24 @@
-FROM node:20-alpine AS development-dependencies-env
-COPY . /app
+# Base stage - install all dependencies
+FROM node:20-alpine AS base
+RUN corepack enable
 WORKDIR /app
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS production-dependencies-env
-COPY ./package.json package-lock.json /app/
-WORKDIR /app
-RUN npm ci --omit=dev
+# Development target
+FROM base AS dev
+COPY . .
+EXPOSE 5173
+CMD ["pnpm", "dev"]
 
-FROM node:20-alpine AS build-env
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-WORKDIR /app
-RUN npm run build
+# Production build stage
+FROM base AS build
+COPY . .
+RUN pnpm build
 
-FROM node:20-alpine
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
-WORKDIR /app
-CMD ["npm", "run", "start"]
+# Production target - inherit pnpm from base
+FROM base AS prod
+RUN pnpm prune --prod  # Remove dev dependencies
+COPY --from=build /app/build ./build
+EXPOSE 3000
+CMD ["pnpm", "start"]
