@@ -11,11 +11,11 @@ services:
       - "5173:5173"
     volumes:
       - .:/app
-      - pimp-koto-node-modules:/app/node_modules
+      - node-modules:/app/node_modules
     environment:
       - NODE_ENV=development
     stdin_open: true
     tty: true
 
 volumes:
-  pimp-koto-node-modules:
+  node-modules:
